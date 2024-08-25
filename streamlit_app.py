@@ -56,7 +56,7 @@ def parse_portfolio_input(input_text):
                 st.error(f"Invalid percentage for ticker {ticker}")
     return portfolio
 
-st.title('Portfolio Analysis App')
+st.title('FUsionAI Portfolio Analyzer')
 
 st.write("""
 Enter your portfolio details below. Each line should contain a ticker symbol followed by its percentage in the portfolio.

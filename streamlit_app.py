@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import pyperclip
 
 def analyze_portfolio(portfolio):
     # Placeholder for actual analysis logic
@@ -80,9 +79,9 @@ BND 43.2
 BNDX 2.4
 CASH 2.0"""
 
-if st.button('Copy Sample Portfolio to Clipboard'):
-    pyperclip.copy(sample_portfolio)
-    st.success('Sample portfolio copied to clipboard!')
+st.subheader('Sample Portfolio')
+st.code(sample_portfolio)
+st.write("You can copy the above sample portfolio and paste it into the text area below.")
 
 portfolio_input = st.text_area('Enter your portfolio (ticker and percentage on each line):')
 

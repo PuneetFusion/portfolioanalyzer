@@ -236,7 +236,7 @@ def generate_summary(analysis):
     return summary
 
 # Streamlit app code starts here
-st.title('PFusionAI Portfolio Analyzer')
+st.title('FusionAI Portfolio Analyzer')
 
 st.write("""
 Enter your portfolio details below. Each line should contain a ticker symbol followed by its percentage in the portfolio.

@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import yfinance as yf
+import pyperclip
 
 def analyze_portfolio(portfolio):
     # Placeholder for actual analysis logic
@@ -32,42 +32,79 @@ def generate_summary(analysis):
     """
     return summary.strip()
 
+def parse_portfolio_input(input_text):
+    portfolio = []
+    lines = input_text.strip().split('\n')
+    for line in lines:
+        parts = line.split()
+        if len(parts) >= 2:
+            ticker = parts[0]
+            try:
+                percentage = float(parts[1])
+                # Simple logic to determine security type based on ticker
+                if ticker.lower() == 'cash':
+                    security_type = 'Cash'
+                elif any(bond in ticker.upper() for bond in ['BOND', 'TREASURY', 'TIPS']):
+                    security_type = 'Fixed Income'
+                else:
+                    security_type = 'Equity'
+                portfolio.append({
+                    'ticker': ticker,
+                    'percentage': percentage,
+                    'type': security_type
+                })
+            except ValueError:
+                st.error(f"Invalid percentage for ticker {ticker}")
+    return portfolio
+
 st.title('Portfolio Analysis App')
 
 st.write("""
-Enter your portfolio details below. For each holding, provide:
-1. The ticker symbol (e.g., AAPL for Apple Inc.)
-2. The percentage of your portfolio it represents (e.g., 10 for 10%)
-3. The type of security (Equity, Fixed Income, or Cash)
+Enter your portfolio details below. Each line should contain a ticker symbol followed by its percentage in the portfolio.
+For example:
+AAPL 10
+GOOGL 15
+BND 30
+CASH 5
 """)
 
-num_holdings = st.number_input('Number of holdings in your portfolio', min_value=1, max_value=20, value=5)
+sample_portfolio = """IVV 12.5
+SPDW 10.0
+VONG 7.5
+VTV 7.5
+SCHA 5.0
+SCHE 3.75
+IWR 3.75
+HYG 2.4
+BND 43.2
+BNDX 2.4
+CASH 2.0"""
 
-portfolio = []
+if st.button('Copy Sample Portfolio to Clipboard'):
+    pyperclip.copy(sample_portfolio)
+    st.success('Sample portfolio copied to clipboard!')
 
-for i in range(num_holdings):
-    st.subheader(f'Holding {i+1}')
-    ticker = st.text_input(f'Ticker Symbol for Holding {i+1}', key=f'ticker_{i}')
-    percentage = st.number_input(f'Percentage for Holding {i+1}', min_value=0.0, max_value=100.0, value=0.0, step=0.1, key=f'percentage_{i}')
-    security_type = st.selectbox(f'Type of Security for Holding {i+1}', ['Equity', 'Fixed Income', 'Cash'], key=f'type_{i}')
-    
-    portfolio.append({
-        'ticker': ticker,
-        'percentage': percentage,
-        'type': security_type
-    })
+portfolio_input = st.text_area('Enter your portfolio (ticker and percentage on each line):')
 
 if st.button('Analyze Portfolio'):
-    total_percentage = sum(holding['percentage'] for holding in portfolio)
-    
-    if abs(total_percentage - 100) > 0.01:
-        st.error(f'Error: Your total portfolio percentage is {total_percentage}%. It should add up to 100%.')
-    else:
-        analysis = analyze_portfolio(portfolio)
-        summary = generate_summary(analysis)
+    if portfolio_input:
+        portfolio = parse_portfolio_input(portfolio_input)
+        total_percentage = sum(holding['percentage'] for holding in portfolio)
         
-        st.subheader('Portfolio Summary')
-        st.write(summary)
+        if abs(total_percentage - 100) > 0.01:
+            st.error(f'Error: Your total portfolio percentage is {total_percentage:.2f}%. It should add up to 100%.')
+        else:
+            analysis = analyze_portfolio(portfolio)
+            summary = generate_summary(analysis)
+            
+            st.subheader('Portfolio Summary')
+            st.write(summary)
+            
+            st.subheader('Portfolio Breakdown')
+            df = pd.DataFrame(portfolio)
+            st.dataframe(df)
+    else:
+        st.error('Please enter your portfolio details before analyzing.')
 
 st.write("""
 Note: This is a simplified analysis and should not be considered financial advice. 

@@ -1,99 +1,114 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import yfinance as yf
-from datetime import datetime, timedelta
-import time
 
-def fetch_data_with_retry(tickers, start_date, end_date, max_retries=3):
-    for attempt in range(max_retries):
-        try:
-            data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
-            return data
-        except Exception as e:
-            if attempt < max_retries - 1:
-                time.sleep(1)  # Wait for 1 second before retrying
-            else:
-                raise e
+# Define asset class characteristics
+# These are example values and should be updated with more accurate data
+ASSET_CLASSES = {
+    'US_LARGE_CAP': {'return': 0.10, 'risk': 0.15, 'type': 'Equity'},
+    'US_MID_CAP': {'return': 0.12, 'risk': 0.18, 'type': 'Equity'},
+    'US_SMALL_CAP': {'return': 0.13, 'risk': 0.20, 'type': 'Equity'},
+    'INTERNATIONAL_DEVELOPED': {'return': 0.09, 'risk': 0.16, 'type': 'Equity'},
+    'EMERGING_MARKETS': {'return': 0.11, 'risk': 0.22, 'type': 'Equity'},
+    'US_AGGREGATE_BOND': {'return': 0.04, 'risk': 0.05, 'type': 'Fixed Income'},
+    'HIGH_YIELD_BOND': {'return': 0.06, 'risk': 0.10, 'type': 'Fixed Income'},
+    'INTERNATIONAL_BOND': {'return': 0.03, 'risk': 0.07, 'type': 'Fixed Income'},
+    'CASH': {'return': 0.01, 'risk': 0.01, 'type': 'Cash'}
+}
 
-def calculate_returns(data):
-    returns = data.pct_change().dropna()
-    return returns
-
-def calculate_portfolio_metrics(returns, weights):
-    portfolio_return = np.sum(returns.mean() * weights) * 252
-    portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(returns.cov() * 252, weights)))
-    sharpe_ratio = portfolio_return / portfolio_volatility
-    return portfolio_return, portfolio_volatility, sharpe_ratio
-
-def simple_analysis(portfolio):
-    total_equity = sum(holding['percentage'] for holding in portfolio if holding['type'] == 'Equity')
-    total_fixed_income = sum(holding['percentage'] for holding in portfolio if holding['type'] == 'Fixed Income')
-    total_cash = sum(holding['percentage'] for holding in portfolio if holding['ticker'].upper() == 'CASH')
-    
-    risk_level = "moderate"
-    if total_equity > 70:
-        risk_level = "aggressive"
-    elif total_equity < 30:
-        risk_level = "conservative"
-    
-    return {
-        'equity_percentage': total_equity,
-        'fixed_income_percentage': total_fixed_income,
-        'cash_percentage': total_cash,
-        'risk_level': risk_level,
-    }
+def map_ticker_to_asset_class(ticker):
+    ticker = ticker.upper()
+    if ticker in ['SPY', 'IVV', 'VOO']:
+        return 'US_LARGE_CAP'
+    elif ticker in ['IJH', 'VO']:
+        return 'US_MID_CAP'
+    elif ticker in ['IJR', 'VB']:
+        return 'US_SMALL_CAP'
+    elif ticker in ['EFA', 'VEA']:
+        return 'INTERNATIONAL_DEVELOPED'
+    elif ticker in ['EEM', 'VWO']:
+        return 'EMERGING_MARKETS'
+    elif ticker in ['AGG', 'BND']:
+        return 'US_AGGREGATE_BOND'
+    elif ticker in ['HYG', 'JNK']:
+        return 'HIGH_YIELD_BOND'
+    elif ticker in ['BNDX', 'IAGG']:
+        return 'INTERNATIONAL_BOND'
+    elif ticker == 'CASH':
+        return 'CASH'
+    else:
+        return 'US_LARGE_CAP'  # Default to US Large Cap if unknown
 
 def analyze_portfolio(portfolio):
-    simple_results = simple_analysis(portfolio)
-    
-    try:
-        tickers = [holding['ticker'] for holding in portfolio if holding['ticker'].upper() != 'CASH']
-        weights = np.array([holding['percentage'] / 100 for holding in portfolio if holding['ticker'].upper() != 'CASH'])
-        
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=365*3)  # 3 years of historical data
-        
-        data = fetch_data_with_retry(tickers, start_date, end_date)
-        returns = calculate_returns(data)
-        
-        portfolio_return, portfolio_volatility, sharpe_ratio = calculate_portfolio_metrics(returns, weights)
-        
-        simple_results.update({
-            'expected_return': portfolio_return,
-            'volatility': portfolio_volatility,
-            'sharpe_ratio': sharpe_ratio
-        })
-    except Exception as e:
-        st.warning(f"Unable to fetch detailed data. Falling back to simple analysis. Error: {str(e)}")
-    
-    return simple_results
+    total_weight = 0
+    weighted_return = 0
+    weighted_risk = 0
+    asset_class_weights = {ac: 0 for ac in ASSET_CLASSES}
+
+    for holding in portfolio:
+        asset_class = map_ticker_to_asset_class(holding['ticker'])
+        weight = holding['percentage'] / 100
+        total_weight += weight
+        asset_class_weights[asset_class] += weight
+        weighted_return += ASSET_CLASSES[asset_class]['return'] * weight
+        weighted_risk += ASSET_CLASSES[asset_class]['risk'] * weight
+
+    if abs(total_weight - 1) > 0.0001:
+        raise ValueError("Portfolio weights do not sum to 100%")
+
+    portfolio_return = weighted_return
+    portfolio_risk = weighted_risk  # This is a simplification; actual portfolio risk would consider correlations
+
+    # Calculate asset type percentages
+    equity_percentage = sum(asset_class_weights[ac] for ac, info in ASSET_CLASSES.items() if info['type'] == 'Equity') * 100
+    fixed_income_percentage = sum(asset_class_weights[ac] for ac, info in ASSET_CLASSES.items() if info['type'] == 'Fixed Income') * 100
+    cash_percentage = asset_class_weights['CASH'] * 100
+
+    # Determine risk level
+    if equity_percentage > 70:
+        risk_level = "aggressive"
+    elif equity_percentage < 30:
+        risk_level = "conservative"
+    else:
+        risk_level = "moderate"
+
+    sharpe_ratio = (portfolio_return - ASSET_CLASSES['CASH']['return']) / portfolio_risk
+
+    return {
+        'expected_return': portfolio_return,
+        'risk': portfolio_risk,
+        'sharpe_ratio': sharpe_ratio,
+        'equity_percentage': equity_percentage,
+        'fixed_income_percentage': fixed_income_percentage,
+        'cash_percentage': cash_percentage,
+        'risk_level': risk_level,
+        'asset_class_weights': asset_class_weights
+    }
 
 def generate_summary(analysis):
     summary = f"""
     This portfolio is designed with a {analysis['risk_level']} approach to investing. 
     It consists of {analysis['equity_percentage']:.1f}% in stocks, {analysis['fixed_income_percentage']:.1f}% in bonds, 
     and {analysis['cash_percentage']:.1f}% in cash.
-    """
     
-    if 'expected_return' in analysis:
-        summary += f"""
-        Based on historical data and Modern Portfolio Theory:
-        - The expected annual return is {analysis['expected_return']*100:.2f}%
-        - The annual volatility (risk) is {analysis['volatility']*100:.2f}%
-        - The Sharpe ratio is {analysis['sharpe_ratio']:.2f}
-        
-        This mix aims to balance potential returns with risk. The Sharpe ratio indicates the portfolio's risk-adjusted 
-        performance, with higher values suggesting better risk-adjusted returns.
-        """
-    else:
-        summary += """
-        Detailed analysis based on historical data is not available at this time.
-        """
+    Based on historical asset class performance:
+    - The expected annual return is {analysis['expected_return']*100:.2f}%
+    - The estimated annual risk (volatility) is {analysis['risk']*100:.2f}%
+    - The Sharpe ratio is {analysis['sharpe_ratio']:.2f}
+    
+    This mix aims to balance potential returns with risk. The Sharpe ratio indicates the portfolio's risk-adjusted 
+    performance, with higher values suggesting better risk-adjusted returns.
+    
+    Asset class breakdown:
+    """
+    for ac, weight in analysis['asset_class_weights'].items():
+        if weight > 0:
+            summary += f"\n    - {ac.replace('_', ' ').title()}: {weight*100:.1f}%"
     
     summary += """
-    Remember, all investments carry risk, and past performance doesn't guarantee future results. 
-    Consider your personal financial goals and risk tolerance when making investment decisions.
+    
+    Remember, this analysis is based on historical asset class performance and is for educational purposes only. 
+    Past performance doesn't guarantee future results. Always consult with a qualified financial advisor before making investment decisions.
     """
     return summary.strip()
 
@@ -106,16 +121,9 @@ def parse_portfolio_input(input_text):
             ticker = parts[0]
             try:
                 percentage = float(parts[1])
-                if ticker.lower() == 'cash':
-                    security_type = 'Cash'
-                elif any(bond in ticker.upper() for bond in ['BOND', 'TREASURY', 'TIPS']):
-                    security_type = 'Fixed Income'
-                else:
-                    security_type = 'Equity'
                 portfolio.append({
                     'ticker': ticker,
-                    'percentage': percentage,
-                    'type': security_type
+                    'percentage': percentage
                 })
             except ValueError:
                 st.error(f"Invalid percentage for ticker {ticker}")
@@ -126,16 +134,15 @@ st.title('Portfolio Analysis App')
 st.write("""
 Enter your portfolio details below. Each line should contain a ticker symbol followed by its percentage in the portfolio.
 For example:
-AAPL 10
-GOOGL 15
-BND 30
-CASH 5
+SPY 30
+AGG 40
+EFA 20
+CASH 10
 """)
 
 sample_portfolio = """SPY 30
-QQQ 20
-AGG 25
-VEU 15
+AGG 40
+EFA 20
 CASH 10"""
 
 st.subheader('Sample Portfolio')
@@ -152,19 +159,23 @@ if st.button('Analyze Portfolio'):
         if abs(total_percentage - 100) > 0.01:
             st.error(f'Error: Your total portfolio percentage is {total_percentage:.2f}%. It should add up to 100%.')
         else:
-            analysis = analyze_portfolio(portfolio)
-            summary = generate_summary(analysis)
-            
-            st.subheader('Portfolio Summary')
-            st.write(summary)
-            
-            st.subheader('Portfolio Breakdown')
-            df = pd.DataFrame(portfolio)
-            st.dataframe(df)
+            try:
+                analysis = analyze_portfolio(portfolio)
+                summary = generate_summary(analysis)
+                
+                st.subheader('Portfolio Summary')
+                st.write(summary)
+                
+                st.subheader('Portfolio Breakdown')
+                df = pd.DataFrame(portfolio)
+                st.dataframe(df)
+            except Exception as e:
+                st.error(f"An error occurred during analysis: {str(e)}")
     else:
         st.error('Please enter your portfolio details before analyzing.')
 
 st.write("""
-Note: This analysis uses historical data when available and includes some concepts from Modern Portfolio Theory. 
-It should not be considered financial advice. Always consult with a qualified financial advisor before making investment decisions.
+Note: This analysis uses predefined asset class characteristics based on historical performance. 
+It's a simplified model and should not be considered financial advice. 
+Always consult with a qualified financial advisor before making investment decisions.
 """)

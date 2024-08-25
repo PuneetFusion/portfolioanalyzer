@@ -236,7 +236,7 @@ def generate_summary(analysis):
     return summary
 
 # Streamlit app code starts here
-st.title('Portfolio Analysis App with AI-Generated Summary')
+st.title('PFusionAI Portfolio Analyzer')
 
 st.write("""
 Enter your portfolio details below. Each line should contain a ticker symbol followed by its percentage in the portfolio.
@@ -269,7 +269,7 @@ if st.button('Analyze Portfolio'):
             try:
                 analysis = analyze_portfolio(portfolio)
                 
-                st.subheader('AI-Generated Portfolio Summary')
+                st.subheader('Portfolio Summary')
                 with st.spinner('Generating AI summary...'):
                     llm_summary = generate_llm_summary(analysis)
                 st.markdown(llm_summary)

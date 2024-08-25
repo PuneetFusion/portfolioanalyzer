@@ -85,32 +85,53 @@ def analyze_portfolio(portfolio):
         'asset_class_weights': asset_class_weights
     }
 
+# [Previous code remains the same]
+
 def generate_summary(analysis):
     summary = f"""
-    This portfolio is designed with a {analysis['risk_level']} approach to investing. 
-    It consists of {analysis['equity_percentage']:.1f}% in stocks, {analysis['fixed_income_percentage']:.1f}% in bonds, 
-    and {analysis['cash_percentage']:.1f}% in cash.
+    Your investment portfolio is structured with a {analysis['risk_level']} approach. Here's what that means:
+
+    Asset Allocation (how your money is divided up):
+    - Stocks: {analysis['equity_percentage']:.1f}%
+      Stocks represent ownership in companies and can offer growth potential but can be more volatile.
+    - Bonds: {analysis['fixed_income_percentage']:.1f}%
+      Bonds are loans to governments or companies, typically offering steady income but lower growth potential.
+    - Cash: {analysis['cash_percentage']:.1f}%
+      Cash includes money market funds and savings, offering high safety but low returns.
+
+    Based on historical performance of these types of investments:
     
-    Based on historical asset class performance:
-    - The expected annual return is {analysis['expected_return']*100:.2f}%
-    - The estimated annual risk (volatility) is {analysis['risk']*100:.2f}%
-    - The Sharpe ratio is {analysis['sharpe_ratio']:.2f}
-    
-    This mix aims to balance potential returns with risk. The Sharpe ratio indicates the portfolio's risk-adjusted 
-    performance, with higher values suggesting better risk-adjusted returns.
-    
-    Asset class breakdown:
+    1. Expected Annual Return: {analysis['expected_return']*100:.2f}%
+       This is how much your portfolio might grow in a year, on average. Remember, actual returns can vary greatly from year to year.
+
+    2. Estimated Annual Risk: {analysis['risk']*100:.2f}%
+       Risk, also called volatility, measures how much your portfolio's value might go up or down. Higher risk often comes with potential for higher returns, but also larger losses.
+
+    3. Sharpe Ratio: {analysis['sharpe_ratio']:.2f}
+       The Sharpe ratio helps compare investments by considering both return and risk. A higher number suggests better returns for the risk taken. Generally, a Sharpe ratio above 1 is considered good.
+
+    Your portfolio is divided into these investment categories:
     """
     for ac, weight in analysis['asset_class_weights'].items():
         if weight > 0:
             summary += f"\n    - {ac.replace('_', ' ').title()}: {weight*100:.1f}%"
     
     summary += """
-    
-    Remember, this analysis is based on historical asset class performance and is for educational purposes only. 
-    Past performance doesn't guarantee future results. Always consult with a qualified financial advisor before making investment decisions.
+
+    What does this all mean?
+    - If your portfolio is "aggressive", it aims for higher growth but might have bigger ups and downs.
+    - If it's "moderate", it tries to balance growth and stability.
+    - If it's "conservative", it prioritizes protecting your money over growing it quickly.
+
+    Remember:
+    1. Past performance doesn't guarantee future results. The market can be unpredictable.
+    2. This analysis is based on general historical data and is just for educational purposes.
+    3. As your life circumstances change, your ideal investment mix might change too.
+    4. It's always a good idea to talk to a qualified financial advisor for personalized advice.
     """
     return summary.strip()
+
+# [Rest of the code remains the same]
 
 def parse_portfolio_input(input_text):
     portfolio = []
